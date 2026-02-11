@@ -765,6 +765,17 @@ textarea.form-input {
   padding: 28px;
 }
 
+.section-hint {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-bottom: 12px;
+}
+
+.compact-card .form-group {
+  margin-bottom: 10px;
+}
+
+
 .builder-section h3 {
   font-size: 1.1rem;
   font-weight: 700;

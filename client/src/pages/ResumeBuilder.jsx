@@ -12,12 +12,18 @@ const emptyResume = {
         location: '',
         linkedin: '',
         portfolio: '',
+        github: '',
     },
     summary: '',
-    experience: [],
     education: [],
+    technicalSkills: [],
+    internships: [],
+    experience: [],
+    projects: [],
     skills: [],
     certifications: [],
+    codingProfiles: [],
+    leadership: [],
 };
 
 export default function ResumeBuilder() {
@@ -33,7 +39,7 @@ export default function ResumeBuilder() {
     const [aiLoading, setAiLoading] = useState(false);
     const [skillInput, setSkillInput] = useState('');
 
-    // ── JD Analysis state ──
+    // JD Analysis
     const [jobDescription, setJobDescription] = useState('');
     const [analysis, setAnalysis] = useState(null);
     const [analyzing, setAnalyzing] = useState(false);
@@ -43,122 +49,35 @@ export default function ResumeBuilder() {
             setLoading(true);
             resumeAPI
                 .getById(id)
-                .then((res) => setForm(res.data.resume))
+                .then((res) => setForm({ ...emptyResume, ...res.data.resume }))
                 .catch((err) => setError(err.message))
                 .finally(() => setLoading(false));
         }
     }, [id, isEditing]);
 
-    const updateField = (field, value) => {
-        setForm((prev) => ({ ...prev, [field]: value }));
-    };
+    /* ─── Generic helpers ─── */
+    const updateField = (field, value) => setForm((p) => ({ ...p, [field]: value }));
+    const updatePersonalInfo = (field, value) =>
+        setForm((p) => ({ ...p, personalInfo: { ...p.personalInfo, [field]: value } }));
 
-    const updatePersonalInfo = (field, value) => {
-        setForm((prev) => ({
-            ...prev,
-            personalInfo: { ...prev.personalInfo, [field]: value },
+    const addArrayItem = (field, item) =>
+        setForm((p) => ({ ...p, [field]: [...(p[field] || []), item] }));
+    const updateArrayItem = (field, index, key, value) =>
+        setForm((p) => ({
+            ...p,
+            [field]: (p[field] || []).map((el, i) => (i === index ? { ...el, [key]: value } : el)),
         }));
-    };
+    const removeArrayItem = (field, index) =>
+        setForm((p) => ({ ...p, [field]: (p[field] || []).filter((_, i) => i !== index) }));
 
-    // ── Experience ──
-    const addExperience = () => {
-        setForm((prev) => ({
-            ...prev,
-            experience: [
-                ...prev.experience,
-                { company: '', position: '', startDate: '', endDate: '', current: false, description: '' },
-            ],
-        }));
-    };
-
-    const updateExperience = (index, field, value) => {
-        setForm((prev) => ({
-            ...prev,
-            experience: prev.experience.map((exp, i) =>
-                i === index ? { ...exp, [field]: value } : exp
-            ),
-        }));
-    };
-
-    const removeExperience = (index) => {
-        setForm((prev) => ({
-            ...prev,
-            experience: prev.experience.filter((_, i) => i !== index),
-        }));
-    };
-
-    // ── Education ──
-    const addEducation = () => {
-        setForm((prev) => ({
-            ...prev,
-            education: [
-                ...prev.education,
-                { institution: '', degree: '', field: '', startDate: '', endDate: '', gpa: '' },
-            ],
-        }));
-    };
-
-    const updateEducation = (index, field, value) => {
-        setForm((prev) => ({
-            ...prev,
-            education: prev.education.map((edu, i) =>
-                i === index ? { ...edu, [field]: value } : edu
-            ),
-        }));
-    };
-
-    const removeEducation = (index) => {
-        setForm((prev) => ({
-            ...prev,
-            education: prev.education.filter((_, i) => i !== index),
-        }));
-    };
-
-    // ── Skills ──
+    /* ─── Skills (flat) ─── */
     const addSkill = () => {
         if (!skillInput.trim()) return;
-        setForm((prev) => ({
-            ...prev,
-            skills: [...prev.skills, { name: skillInput.trim(), level: 'intermediate' }],
-        }));
+        addArrayItem('skills', { name: skillInput.trim(), level: 'intermediate' });
         setSkillInput('');
     };
 
-    const removeSkill = (index) => {
-        setForm((prev) => ({
-            ...prev,
-            skills: prev.skills.filter((_, i) => i !== index),
-        }));
-    };
-
-    // ── Certifications ──
-    const addCertification = () => {
-        setForm((prev) => ({
-            ...prev,
-            certifications: [
-                ...(prev.certifications || []),
-                { name: '', issuer: '', date: '' },
-            ],
-        }));
-    };
-
-    const updateCertification = (index, field, value) => {
-        setForm((prev) => ({
-            ...prev,
-            certifications: (prev.certifications || []).map((c, i) =>
-                i === index ? { ...c, [field]: value } : c
-            ),
-        }));
-    };
-
-    const removeCertification = (index) => {
-        setForm((prev) => ({
-            ...prev,
-            certifications: (prev.certifications || []).filter((_, i) => i !== index),
-        }));
-    };
-
-    // ── AI Summary ──
+    /* ─── AI Summary ─── */
     const generateSummary = async () => {
         setAiLoading(true);
         setError('');
@@ -179,20 +98,14 @@ export default function ResumeBuilder() {
         }
     };
 
-    // ── AI JD Analysis ──
+    /* ─── AI JD Analysis ─── */
     const analyzeVsJD = async () => {
-        if (!jobDescription.trim()) {
-            setError('Please paste a job description first');
-            return;
-        }
+        if (!jobDescription.trim()) return setError('Paste a job description first');
         setAnalyzing(true);
         setError('');
         setAnalysis(null);
         try {
-            const res = await aiAPI.analyzeResume({
-                resume: form,
-                jobDescription,
-            });
+            const res = await aiAPI.analyzeResume({ resume: form, jobDescription });
             setAnalysis(res.data.analysis);
         } catch (err) {
             setError(`Analysis Error: ${err.message}`);
@@ -201,25 +114,15 @@ export default function ResumeBuilder() {
         }
     };
 
-    // ── Save ──
+    /* ─── Save ─── */
     const handleSave = async () => {
-        if (!form.personalInfo.fullName.trim()) {
-            setError('Full name is required');
-            return;
-        }
-        if (!form.title.trim()) {
-            // Auto-set title from name if empty
-            form.title = `${form.personalInfo.fullName}'s Resume`;
-        }
-
+        if (!form.personalInfo.fullName.trim()) return setError('Full name is required');
+        if (!form.title.trim()) form.title = `${form.personalInfo.fullName}'s Resume`;
         setSaving(true);
         setError('');
         try {
-            if (isEditing) {
-                await resumeAPI.update(id, form);
-            } else {
-                await resumeAPI.create(form);
-            }
+            if (isEditing) await resumeAPI.update(id, form);
+            else await resumeAPI.create(form);
             navigate('/dashboard');
         } catch (err) {
             setError(err.message);
@@ -229,324 +132,403 @@ export default function ResumeBuilder() {
     };
 
     if (loading) {
-        return (
-            <div className="loading-screen">
-                <div className="spinner"></div>
-            </div>
-        );
+        return <div className="loading-screen"><div className="spinner"></div></div>;
     }
 
     return (
         <div className="page fade-in">
             <div className="builder-split">
-                {/* ── LEFT: Form ── */}
+                {/* ═══════════════ LEFT: FORM ═══════════════ */}
                 <div className="builder-form-side">
                     <div className="page-header">
                         <h1>{isEditing ? 'Edit Resume' : 'Create New Resume'}</h1>
-                        <p>Fill in your details. Only your <strong>name</strong> is required — everything else is optional.</p>
+                        <p>Fill in your details — only <strong>name</strong> is required. Sections with data will appear in the preview.</p>
                     </div>
 
                     {error && <div className="alert alert-error">⚠️ {error}</div>}
                     {success && <div className="alert alert-success">✅ {success}</div>}
 
-                    {/* Title */}
-                    <div className="builder-section">
-                        <h3><span className="section-icon">📋</span> Resume Title</h3>
+                    {/* ── Resume Title ── */}
+                    <FormSection icon="📋" title="Resume Title">
                         <div className="form-group">
-                            <input
-                                type="text"
-                                className="form-input"
-                                placeholder="e.g. Full Stack Developer Resume"
-                                value={form.title}
-                                onChange={(e) => updateField('title', e.target.value)}
-                            />
+                            <input type="text" className="form-input" placeholder="e.g. Full Stack Developer Resume"
+                                value={form.title} onChange={(e) => updateField('title', e.target.value)} />
                         </div>
-                    </div>
+                    </FormSection>
 
-                    {/* Personal Info */}
-                    <div className="builder-section">
-                        <h3><span className="section-icon">👤</span> Personal Information</h3>
+                    {/* ── Personal Info ── */}
+                    <FormSection icon="👤" title="Personal Information">
                         <div className="form-row">
-                            <div className="form-group">
-                                <label>Full Name <span style={{ color: 'var(--accent-primary)' }}>*</span></label>
-                                <input type="text" className="form-input" placeholder="Your Name"
-                                    value={form.personalInfo.fullName}
-                                    onChange={(e) => updatePersonalInfo('fullName', e.target.value)} />
-                            </div>
-                            <div className="form-group">
-                                <label>Email</label>
+                            <FG label="Full Name *">
+                                <input type="text" className="form-input" placeholder="Nandala Nithin"
+                                    value={form.personalInfo.fullName} onChange={(e) => updatePersonalInfo('fullName', e.target.value)} />
+                            </FG>
+                            <FG label="Email">
                                 <input type="email" className="form-input" placeholder="email@example.com"
-                                    value={form.personalInfo.email}
-                                    onChange={(e) => updatePersonalInfo('email', e.target.value)} />
-                            </div>
+                                    value={form.personalInfo.email} onChange={(e) => updatePersonalInfo('email', e.target.value)} />
+                            </FG>
                         </div>
                         <div className="form-row">
-                            <div className="form-group">
-                                <label>Phone</label>
-                                <input type="text" className="form-input" placeholder="+1 234 567 890"
-                                    value={form.personalInfo.phone}
-                                    onChange={(e) => updatePersonalInfo('phone', e.target.value)} />
-                            </div>
-                            <div className="form-group">
-                                <label>Location</label>
-                                <input type="text" className="form-input" placeholder="City, Country"
-                                    value={form.personalInfo.location}
-                                    onChange={(e) => updatePersonalInfo('location', e.target.value)} />
-                            </div>
+                            <FG label="Phone">
+                                <input type="text" className="form-input" placeholder="+91 9392777519"
+                                    value={form.personalInfo.phone} onChange={(e) => updatePersonalInfo('phone', e.target.value)} />
+                            </FG>
+                            <FG label="Location">
+                                <input type="text" className="form-input" placeholder="Hyderabad, India"
+                                    value={form.personalInfo.location} onChange={(e) => updatePersonalInfo('location', e.target.value)} />
+                            </FG>
                         </div>
                         <div className="form-row">
-                            <div className="form-group">
-                                <label>LinkedIn</label>
-                                <input type="url" className="form-input" placeholder="https://linkedin.com/in/..."
-                                    value={form.personalInfo.linkedin}
-                                    onChange={(e) => updatePersonalInfo('linkedin', e.target.value)} />
-                            </div>
-                            <div className="form-group">
-                                <label>Portfolio</label>
-                                <input type="url" className="form-input" placeholder="https://yoursite.com"
-                                    value={form.personalInfo.portfolio}
-                                    onChange={(e) => updatePersonalInfo('portfolio', e.target.value)} />
-                            </div>
+                            <FG label="GitHub">
+                                <input type="url" className="form-input" placeholder="https://github.com/username"
+                                    value={form.personalInfo.github} onChange={(e) => updatePersonalInfo('github', e.target.value)} />
+                            </FG>
+                            <FG label="LinkedIn">
+                                <input type="url" className="form-input" placeholder="https://linkedin.com/in/username"
+                                    value={form.personalInfo.linkedin} onChange={(e) => updatePersonalInfo('linkedin', e.target.value)} />
+                            </FG>
                         </div>
-                    </div>
+                        <FG label="Portfolio / Website">
+                            <input type="url" className="form-input" placeholder="https://yoursite.com"
+                                value={form.personalInfo.portfolio} onChange={(e) => updatePersonalInfo('portfolio', e.target.value)} />
+                        </FG>
+                    </FormSection>
 
-                    {/* AI Summary */}
+                    {/* ── Education ── */}
+                    <FormSection icon="🎓" title="Education">
+                        {(form.education || []).map((edu, i) => (
+                            <div key={i} className="entry-card">
+                                <button className="remove-btn" onClick={() => removeArrayItem('education', i)}>✕</button>
+                                <div className="form-row">
+                                    <FG label="Institution">
+                                        <input type="text" className="form-input" placeholder="MIT, Stanford, etc."
+                                            value={edu.institution} onChange={(e) => updateArrayItem('education', i, 'institution', e.target.value)} />
+                                    </FG>
+                                    <FG label="Location">
+                                        <input type="text" className="form-input" placeholder="Hyderabad, India"
+                                            value={edu.location || ''} onChange={(e) => updateArrayItem('education', i, 'location', e.target.value)} />
+                                    </FG>
+                                </div>
+                                <div className="form-row">
+                                    <FG label="Degree">
+                                        <input type="text" className="form-input" placeholder="B.Tech, M.S., SSC, etc."
+                                            value={edu.degree} onChange={(e) => updateArrayItem('education', i, 'degree', e.target.value)} />
+                                    </FG>
+                                    <FG label="Field of Study">
+                                        <input type="text" className="form-input" placeholder="Computer Science"
+                                            value={edu.field} onChange={(e) => updateArrayItem('education', i, 'field', e.target.value)} />
+                                    </FG>
+                                </div>
+                                <div className="form-row">
+                                    <FG label="Graduation / End Date">
+                                        <input type="text" className="form-input" placeholder="August 2027"
+                                            value={edu.endDate || ''} onChange={(e) => updateArrayItem('education', i, 'endDate', e.target.value)} />
+                                    </FG>
+                                    <FG label="GPA / Score">
+                                        <input type="text" className="form-input" placeholder="8.51/10 or 10/10"
+                                            value={edu.gpa} onChange={(e) => updateArrayItem('education', i, 'gpa', e.target.value)} />
+                                    </FG>
+                                </div>
+                            </div>
+                        ))}
+                        <button className="add-btn" onClick={() => addArrayItem('education',
+                            { institution: '', degree: '', field: '', location: '', startDate: '', endDate: '', gpa: '' })}>
+                            + Add Education
+                        </button>
+                    </FormSection>
+
+                    {/* ── Technical Skills ── */}
+                    <FormSection icon="💻" title="Technical Skills">
+                        <p className="section-hint">Add categories like <em>Languages</em>, <em>Front-End</em>, <em>Back-End</em>, <em>AI / ML</em>, <em>Tools</em>, etc.</p>
+                        {(form.technicalSkills || []).map((ts, i) => (
+                            <div key={i} className="entry-card compact-card">
+                                <button className="remove-btn" onClick={() => removeArrayItem('technicalSkills', i)}>✕</button>
+                                <div className="form-row">
+                                    <FG label="Category">
+                                        <input type="text" className="form-input" placeholder="Languages"
+                                            value={ts.category} onChange={(e) => updateArrayItem('technicalSkills', i, 'category', e.target.value)} />
+                                    </FG>
+                                    <FG label="Skills (comma-separated)">
+                                        <input type="text" className="form-input" placeholder="Python, Java, JavaScript, SQL"
+                                            value={ts.skills} onChange={(e) => updateArrayItem('technicalSkills', i, 'skills', e.target.value)} />
+                                    </FG>
+                                </div>
+                            </div>
+                        ))}
+                        <button className="add-btn" onClick={() => addArrayItem('technicalSkills', { category: '', skills: '' })}>
+                            + Add Skill Category
+                        </button>
+                    </FormSection>
+
+                    {/* ── Internships ── */}
+                    <FormSection icon="🏢" title="Internships">
+                        {(form.internships || []).map((intern, i) => (
+                            <div key={i} className="entry-card">
+                                <button className="remove-btn" onClick={() => removeArrayItem('internships', i)}>✕</button>
+                                <div className="form-row">
+                                    <FG label="Company">
+                                        <input type="text" className="form-input" placeholder="Company name"
+                                            value={intern.company} onChange={(e) => updateArrayItem('internships', i, 'company', e.target.value)} />
+                                    </FG>
+                                    <FG label="Role">
+                                        <input type="text" className="form-input" placeholder="AI/ML Intern"
+                                            value={intern.role} onChange={(e) => updateArrayItem('internships', i, 'role', e.target.value)} />
+                                    </FG>
+                                </div>
+                                <div className="form-row">
+                                    <FG label="Location">
+                                        <input type="text" className="form-input" placeholder="Hyderabad, India"
+                                            value={intern.location || ''} onChange={(e) => updateArrayItem('internships', i, 'location', e.target.value)} />
+                                    </FG>
+                                    <FG label="Link">
+                                        <input type="url" className="form-input" placeholder="https://company.com"
+                                            value={intern.link || ''} onChange={(e) => updateArrayItem('internships', i, 'link', e.target.value)} />
+                                    </FG>
+                                </div>
+                                <div className="form-row">
+                                    <FG label="Start Date">
+                                        <input type="text" className="form-input" placeholder="May 2025"
+                                            value={intern.startDate || ''} onChange={(e) => updateArrayItem('internships', i, 'startDate', e.target.value)} />
+                                    </FG>
+                                    <FG label="End Date">
+                                        <input type="text" className="form-input" placeholder="Present"
+                                            value={intern.endDate || ''} onChange={(e) => updateArrayItem('internships', i, 'endDate', e.target.value)} />
+                                    </FG>
+                                </div>
+                                <FG label="Description (one bullet per line)">
+                                    <textarea className="form-input" rows={3} placeholder="• Worked on real-world datasets&#10;• Developed a classification system&#10;• Gained insights into the project lifecycle"
+                                        value={intern.description || ''} onChange={(e) => updateArrayItem('internships', i, 'description', e.target.value)} />
+                                </FG>
+                            </div>
+                        ))}
+                        <button className="add-btn" onClick={() => addArrayItem('internships',
+                            { company: '', role: '', location: '', startDate: '', endDate: '', link: '', description: '' })}>
+                            + Add Internship
+                        </button>
+                    </FormSection>
+
+                    {/* ── Projects ── */}
+                    <FormSection icon="🚀" title="Projects">
+                        {(form.projects || []).map((proj, i) => (
+                            <div key={i} className="entry-card">
+                                <button className="remove-btn" onClick={() => removeArrayItem('projects', i)}>✕</button>
+                                <div className="form-row">
+                                    <FG label="Project Name">
+                                        <input type="text" className="form-input" placeholder="AI-Powered Smart Farming App"
+                                            value={proj.name} onChange={(e) => updateArrayItem('projects', i, 'name', e.target.value)} />
+                                    </FG>
+                                    <FG label="Link (GitHub, etc.)">
+                                        <input type="url" className="form-input" placeholder="https://github.com/user/project"
+                                            value={proj.link || ''} onChange={(e) => updateArrayItem('projects', i, 'link', e.target.value)} />
+                                    </FG>
+                                </div>
+                                <div className="form-row">
+                                    <FG label="Start Date">
+                                        <input type="text" className="form-input" placeholder="Jan 2026"
+                                            value={proj.startDate || ''} onChange={(e) => updateArrayItem('projects', i, 'startDate', e.target.value)} />
+                                    </FG>
+                                    <FG label="End Date">
+                                        <input type="text" className="form-input" placeholder="Present"
+                                            value={proj.endDate || ''} onChange={(e) => updateArrayItem('projects', i, 'endDate', e.target.value)} />
+                                    </FG>
+                                </div>
+                                <FG label="Description (one bullet per line)">
+                                    <textarea className="form-input" rows={3} placeholder="• Led a 4-member team to build an Android app&#10;• Integrated ML models using Indian soil data&#10;• Designed for low-connectivity rural usage"
+                                        value={proj.description || ''} onChange={(e) => updateArrayItem('projects', i, 'description', e.target.value)} />
+                                </FG>
+                            </div>
+                        ))}
+                        <button className="add-btn" onClick={() => addArrayItem('projects',
+                            { name: '', link: '', startDate: '', endDate: '', description: '' })}>
+                            + Add Project
+                        </button>
+                    </FormSection>
+
+                    {/* ── Work Experience ── */}
+                    <FormSection icon="💼" title="Work Experience">
+                        {(form.experience || []).map((exp, i) => (
+                            <div key={i} className="entry-card">
+                                <button className="remove-btn" onClick={() => removeArrayItem('experience', i)}>✕</button>
+                                <div className="form-row">
+                                    <FG label="Company">
+                                        <input type="text" className="form-input" placeholder="Company name"
+                                            value={exp.company} onChange={(e) => updateArrayItem('experience', i, 'company', e.target.value)} />
+                                    </FG>
+                                    <FG label="Position">
+                                        <input type="text" className="form-input" placeholder="Job title"
+                                            value={exp.position} onChange={(e) => updateArrayItem('experience', i, 'position', e.target.value)} />
+                                    </FG>
+                                </div>
+                                <div className="form-row">
+                                    <FG label="Location">
+                                        <input type="text" className="form-input" placeholder="City, Country"
+                                            value={exp.location || ''} onChange={(e) => updateArrayItem('experience', i, 'location', e.target.value)} />
+                                    </FG>
+                                    <div className="form-group" />
+                                </div>
+                                <div className="form-row">
+                                    <FG label="Start Date">
+                                        <input type="text" className="form-input" placeholder="Jan 2024"
+                                            value={exp.startDate || ''} onChange={(e) => updateArrayItem('experience', i, 'startDate', e.target.value)} />
+                                    </FG>
+                                    <FG label="End Date">
+                                        <input type="text" className="form-input" placeholder="Present"
+                                            value={exp.endDate || ''} onChange={(e) => updateArrayItem('experience', i, 'endDate', e.target.value)}
+                                            disabled={exp.current} />
+                                    </FG>
+                                </div>
+                                <FG label="Description (one bullet per line)">
+                                    <textarea className="form-input" rows={3} placeholder="Key responsibilities and achievements..."
+                                        value={exp.description || ''} onChange={(e) => updateArrayItem('experience', i, 'description', e.target.value)} />
+                                </FG>
+                            </div>
+                        ))}
+                        <button className="add-btn" onClick={() => addArrayItem('experience',
+                            { company: '', position: '', location: '', startDate: '', endDate: '', current: false, description: '' })}>
+                            + Add Experience
+                        </button>
+                    </FormSection>
+
+                    {/* ── Certifications ── */}
+                    <FormSection icon="🏆" title="Certifications">
+                        {(form.certifications || []).map((cert, i) => (
+                            <div key={i} className="entry-card compact-card">
+                                <button className="remove-btn" onClick={() => removeArrayItem('certifications', i)}>✕</button>
+                                <div className="form-row">
+                                    <FG label="Certification Name">
+                                        <input type="text" className="form-input" placeholder="Prompt Engineering"
+                                            value={cert.name} onChange={(e) => updateArrayItem('certifications', i, 'name', e.target.value)} />
+                                    </FG>
+                                    <FG label="Issuer">
+                                        <input type="text" className="form-input" placeholder="Infosys Springboard"
+                                            value={cert.issuer} onChange={(e) => updateArrayItem('certifications', i, 'issuer', e.target.value)} />
+                                    </FG>
+                                </div>
+                                <FG label="Date">
+                                    <input type="text" className="form-input" placeholder="Apr 2025"
+                                        value={cert.date || ''} onChange={(e) => updateArrayItem('certifications', i, 'date', e.target.value)} />
+                                </FG>
+                            </div>
+                        ))}
+                        <button className="add-btn" onClick={() => addArrayItem('certifications',
+                            { name: '', issuer: '', date: '', url: '' })}>
+                            + Add Certification
+                        </button>
+                    </FormSection>
+
+                    {/* ── Coding Profiles & Portfolio ── */}
+                    <FormSection icon="🖥" title="Coding Profiles & Portfolio">
+                        <p className="section-hint">Add your LeetCode, HackerRank, Codeforces stats, etc.</p>
+                        {(form.codingProfiles || []).map((cp, i) => (
+                            <div key={i} className="entry-card compact-card">
+                                <button className="remove-btn" onClick={() => removeArrayItem('codingProfiles', i)}>✕</button>
+                                <div className="form-row">
+                                    <FG label="Platform">
+                                        <input type="text" className="form-input" placeholder="LeetCode"
+                                            value={cp.platform} onChange={(e) => updateArrayItem('codingProfiles', i, 'platform', e.target.value)} />
+                                    </FG>
+                                    <FG label="Stats / Info">
+                                        <input type="text" className="form-input" placeholder="355 Problems Solved"
+                                            value={cp.stats} onChange={(e) => updateArrayItem('codingProfiles', i, 'stats', e.target.value)} />
+                                    </FG>
+                                </div>
+                            </div>
+                        ))}
+                        <button className="add-btn" onClick={() => addArrayItem('codingProfiles', { platform: '', stats: '' })}>
+                            + Add Profile
+                        </button>
+                    </FormSection>
+
+                    {/* ── Leadership ── */}
+                    <FormSection icon="👑" title="Leadership">
+                        {(form.leadership || []).map((lead, i) => (
+                            <div key={i} className="entry-card">
+                                <button className="remove-btn" onClick={() => removeArrayItem('leadership', i)}>✕</button>
+                                <FG label="Title / Role">
+                                    <input type="text" className="form-input" placeholder="Team Lead @FARMA Project"
+                                        value={lead.title} onChange={(e) => updateArrayItem('leadership', i, 'title', e.target.value)} />
+                                </FG>
+                                <FG label="Description">
+                                    <textarea className="form-input" rows={2} placeholder="Led a cross-functional 4-member team..."
+                                        value={lead.description || ''} onChange={(e) => updateArrayItem('leadership', i, 'description', e.target.value)} />
+                                </FG>
+                            </div>
+                        ))}
+                        <button className="add-btn" onClick={() => addArrayItem('leadership', { title: '', description: '' })}>
+                            + Add Leadership
+                        </button>
+                    </FormSection>
+
+                    {/* ── AI Summary ── */}
                     <div className="builder-section ai-section">
-                        <h3><span className="section-icon">🤖</span> Professional Summary</h3>
+                        <h3><span className="section-icon">🤖</span> AI Professional Summary</h3>
                         <button className="ai-generate-btn" onClick={generateSummary} disabled={aiLoading}>
                             {aiLoading ? (<><span className="spinner"></span> Generating...</>) : (<>✨ Generate with AI</>)}
                         </button>
-                        <div className="form-group">
+                        <FG label="Summary">
                             <textarea className="form-input" rows={4} placeholder="Your professional summary..."
-                                value={form.summary} onChange={(e) => updateField('summary', e.target.value)} />
-                        </div>
+                                value={form.summary || ''} onChange={(e) => updateField('summary', e.target.value)} />
+                        </FG>
                     </div>
 
-                    {/* Experience */}
-                    <div className="builder-section">
-                        <h3><span className="section-icon">💼</span> Work Experience</h3>
-                        {form.experience.map((exp, i) => (
-                            <div key={i} className="entry-card">
-                                <button className="remove-btn" onClick={() => removeExperience(i)}>✕</button>
-                                <div className="form-row">
-                                    <div className="form-group">
-                                        <label>Company</label>
-                                        <input type="text" className="form-input" placeholder="Company name"
-                                            value={exp.company} onChange={(e) => updateExperience(i, 'company', e.target.value)} />
-                                    </div>
-                                    <div className="form-group">
-                                        <label>Position</label>
-                                        <input type="text" className="form-input" placeholder="Job title"
-                                            value={exp.position} onChange={(e) => updateExperience(i, 'position', e.target.value)} />
-                                    </div>
-                                </div>
-                                <div className="form-row">
-                                    <div className="form-group">
-                                        <label>Start Date</label>
-                                        <input type="date" className="form-input"
-                                            value={exp.startDate ? exp.startDate.split('T')[0] : ''}
-                                            onChange={(e) => updateExperience(i, 'startDate', e.target.value)} />
-                                    </div>
-                                    <div className="form-group">
-                                        <label>End Date</label>
-                                        <input type="date" className="form-input"
-                                            value={exp.endDate ? exp.endDate.split('T')[0] : ''}
-                                            onChange={(e) => updateExperience(i, 'endDate', e.target.value)}
-                                            disabled={exp.current} />
-                                    </div>
-                                </div>
-                                <div className="form-group">
-                                    <label>Description <span style={{ color: 'var(--text-muted)', fontSize: '0.8em' }}>(one bullet per line)</span></label>
-                                    <textarea className="form-input" rows={3} placeholder="Key responsibilities and achievements..."
-                                        value={exp.description} onChange={(e) => updateExperience(i, 'description', e.target.value)} />
-                                </div>
-                            </div>
-                        ))}
-                        <button className="add-btn" onClick={addExperience}>+ Add Experience</button>
-                    </div>
-
-                    {/* Education */}
-                    <div className="builder-section">
-                        <h3><span className="section-icon">🎓</span> Education</h3>
-                        {form.education.map((edu, i) => (
-                            <div key={i} className="entry-card">
-                                <button className="remove-btn" onClick={() => removeEducation(i)}>✕</button>
-                                <div className="form-row">
-                                    <div className="form-group">
-                                        <label>Institution</label>
-                                        <input type="text" className="form-input" placeholder="University name"
-                                            value={edu.institution} onChange={(e) => updateEducation(i, 'institution', e.target.value)} />
-                                    </div>
-                                    <div className="form-group">
-                                        <label>Degree</label>
-                                        <input type="text" className="form-input" placeholder="B.S., M.S., etc."
-                                            value={edu.degree} onChange={(e) => updateEducation(i, 'degree', e.target.value)} />
-                                    </div>
-                                </div>
-                                <div className="form-row">
-                                    <div className="form-group">
-                                        <label>Field of Study</label>
-                                        <input type="text" className="form-input" placeholder="Computer Science"
-                                            value={edu.field} onChange={(e) => updateEducation(i, 'field', e.target.value)} />
-                                    </div>
-                                    <div className="form-group">
-                                        <label>GPA</label>
-                                        <input type="text" className="form-input" placeholder="3.8/4.0"
-                                            value={edu.gpa} onChange={(e) => updateEducation(i, 'gpa', e.target.value)} />
-                                    </div>
-                                </div>
-                                <div className="form-row">
-                                    <div className="form-group">
-                                        <label>Start Date</label>
-                                        <input type="date" className="form-input"
-                                            value={edu.startDate ? edu.startDate.split('T')[0] : ''}
-                                            onChange={(e) => updateEducation(i, 'startDate', e.target.value)} />
-                                    </div>
-                                    <div className="form-group">
-                                        <label>End Date</label>
-                                        <input type="date" className="form-input"
-                                            value={edu.endDate ? edu.endDate.split('T')[0] : ''}
-                                            onChange={(e) => updateEducation(i, 'endDate', e.target.value)} />
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                        <button className="add-btn" onClick={addEducation}>+ Add Education</button>
-                    </div>
-
-                    {/* Skills */}
-                    <div className="builder-section">
-                        <h3><span className="section-icon">🛠</span> Skills</h3>
-                        <div className="skills-grid">
-                            {form.skills.map((skill, i) => (
-                                <div key={i} className="skill-tag">
-                                    {skill.name}
-                                    <span className="remove-skill" onClick={() => removeSkill(i)}>✕</span>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="skill-input-row">
-                            <input type="text" className="form-input" placeholder="Add a skill (e.g. React)"
-                                value={skillInput}
-                                onChange={(e) => setSkillInput(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addSkill())} />
-                            <button className="btn btn-secondary btn-sm" onClick={addSkill}>Add</button>
-                        </div>
-                    </div>
-
-                    {/* Certifications */}
-                    <div className="builder-section">
-                        <h3><span className="section-icon">🏆</span> Certifications</h3>
-                        {(form.certifications || []).map((cert, i) => (
-                            <div key={i} className="entry-card">
-                                <button className="remove-btn" onClick={() => removeCertification(i)}>✕</button>
-                                <div className="form-row">
-                                    <div className="form-group">
-                                        <label>Certification Name</label>
-                                        <input type="text" className="form-input" placeholder="AWS Solutions Architect"
-                                            value={cert.name} onChange={(e) => updateCertification(i, 'name', e.target.value)} />
-                                    </div>
-                                    <div className="form-group">
-                                        <label>Issuer</label>
-                                        <input type="text" className="form-input" placeholder="Amazon"
-                                            value={cert.issuer} onChange={(e) => updateCertification(i, 'issuer', e.target.value)} />
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                        <button className="add-btn" onClick={addCertification}>+ Add Certification</button>
-                    </div>
-
-                    {/* ── Job Description Analysis ── */}
+                    {/* ── JD Analysis ── */}
                     <div className="builder-section jd-section">
                         <h3><span className="section-icon">🎯</span> Job Description Analysis</h3>
-                        <p style={{ color: 'var(--text-secondary)', marginBottom: 12, fontSize: '0.9rem' }}>
-                            Paste a job description to see how well your resume matches and what's missing.
-                        </p>
-                        <div className="form-group">
-                            <textarea
-                                className="form-input"
-                                rows={6}
-                                placeholder="Paste the full job description here..."
-                                value={jobDescription}
-                                onChange={(e) => setJobDescription(e.target.value)}
-                            />
-                        </div>
+                        <p className="section-hint">Paste a job description to see how your resume matches.</p>
+                        <FG label="">
+                            <textarea className="form-input" rows={5} placeholder="Paste the full job description here..."
+                                value={jobDescription} onChange={(e) => setJobDescription(e.target.value)} />
+                        </FG>
                         <button className="ai-generate-btn" onClick={analyzeVsJD} disabled={analyzing}>
                             {analyzing ? (<><span className="spinner"></span> Analyzing...</>) : (<>🎯 Analyze Match</>)}
                         </button>
 
-                        {/* Analysis Results */}
                         {analysis && (
                             <div className="analysis-results fade-in">
-                                {/* Match Score */}
                                 <div className="match-score-bar">
                                     <div className="match-score-label">
                                         <span>ATS Match Score</span>
-                                        <span className={`match-score-value ${analysis.matchScore >= 80 ? 'score-high' :
-                                                analysis.matchScore >= 50 ? 'score-mid' : 'score-low'
-                                            }`}>
-                                            {analysis.matchScore}%
-                                        </span>
+                                        <span className={`match-score-value ${analysis.matchScore >= 80 ? 'score-high' : analysis.matchScore >= 50 ? 'score-mid' : 'score-low'
+                                            }`}>{analysis.matchScore}%</span>
                                     </div>
                                     <div className="match-bar-track">
-                                        <div
-                                            className={`match-bar-fill ${analysis.matchScore >= 80 ? 'bar-high' :
-                                                    analysis.matchScore >= 50 ? 'bar-mid' : 'bar-low'
-                                                }`}
-                                            style={{ width: `${analysis.matchScore}%` }}
-                                        ></div>
+                                        <div className={`match-bar-fill ${analysis.matchScore >= 80 ? 'bar-high' : analysis.matchScore >= 50 ? 'bar-mid' : 'bar-low'
+                                            }`} style={{ width: `${analysis.matchScore}%` }}></div>
                                     </div>
                                 </div>
-
-                                {/* Strengths */}
                                 {analysis.strengths?.length > 0 && (
                                     <div className="analysis-block">
                                         <h4>✅ Strengths</h4>
-                                        <ul>
-                                            {analysis.strengths.map((s, i) => <li key={i}>{s}</li>)}
-                                        </ul>
+                                        <ul>{analysis.strengths.map((s, i) => <li key={i}>{s}</li>)}</ul>
                                     </div>
                                 )}
-
-                                {/* Missing Skills */}
                                 {analysis.missingSkills?.length > 0 && (
                                     <div className="analysis-block missing">
                                         <h4>⚠️ Missing Skills</h4>
                                         <div className="missing-tags">
-                                            {analysis.missingSkills.map((s, i) => (
-                                                <span key={i} className="missing-tag">{s}</span>
-                                            ))}
+                                            {analysis.missingSkills.map((s, i) => <span key={i} className="missing-tag">{s}</span>)}
                                         </div>
                                     </div>
                                 )}
-
-                                {/* Missing Sections */}
                                 {analysis.missingSections?.length > 0 && (
                                     <div className="analysis-block missing">
                                         <h4>📝 Missing Sections</h4>
                                         <div className="missing-tags">
-                                            {analysis.missingSections.map((s, i) => (
-                                                <span key={i} className="missing-tag section-tag">{s}</span>
-                                            ))}
+                                            {analysis.missingSections.map((s, i) => <span key={i} className="missing-tag section-tag">{s}</span>)}
                                         </div>
                                     </div>
                                 )}
-
-                                {/* Suggestions */}
                                 {analysis.suggestions?.length > 0 && (
                                     <div className="analysis-block">
                                         <h4>💡 Suggestions</h4>
-                                        <ul>
-                                            {analysis.suggestions.map((s, i) => <li key={i}>{s}</li>)}
-                                        </ul>
+                                        <ul>{analysis.suggestions.map((s, i) => <li key={i}>{s}</li>)}</ul>
                                     </div>
                                 )}
                             </div>
                         )}
                     </div>
 
-                    {/* Actions */}
+                    {/* ── Actions ── */}
                     <div className="builder-actions">
                         <button className="btn btn-secondary" onClick={() => navigate('/dashboard')}>Cancel</button>
                         <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
@@ -555,7 +537,7 @@ export default function ResumeBuilder() {
                     </div>
                 </div>
 
-                {/* ── RIGHT: Live Preview ── */}
+                {/* ═══════════════ RIGHT: LIVE PREVIEW ═══════════════ */}
                 <div className="builder-preview-side">
                     <div className="preview-header">
                         <h3>📄 Live Preview</h3>
@@ -564,6 +546,26 @@ export default function ResumeBuilder() {
                     <ResumePreview data={form} />
                 </div>
             </div>
+        </div>
+    );
+}
+
+/* ─── Reusable sub-components ─── */
+
+function FormSection({ icon, title, children }) {
+    return (
+        <div className="builder-section">
+            <h3><span className="section-icon">{icon}</span> {title}</h3>
+            {children}
+        </div>
+    );
+}
+
+function FG({ label, children }) {
+    return (
+        <div className="form-group">
+            {label && <label>{label}</label>}
+            {children}
         </div>
     );
 }

@@ -21,30 +21,59 @@ const resumeSchema = new mongoose.Schema(
             location: { type: String, trim: true },
             linkedin: { type: String, trim: true },
             portfolio: { type: String, trim: true },
+            github: { type: String, trim: true },
         },
         summary: {
             type: String,
             trim: true,
             maxlength: [2000, 'Summary cannot exceed 2000 characters'],
         },
-        experience: [
-            {
-                company: { type: String, trim: true },
-                position: { type: String, trim: true },
-                startDate: { type: Date },
-                endDate: { type: Date },
-                current: { type: Boolean, default: false },
-                description: { type: String, trim: true },
-            },
-        ],
         education: [
             {
                 institution: { type: String, trim: true },
                 degree: { type: String, trim: true },
                 field: { type: String, trim: true },
-                startDate: { type: Date },
-                endDate: { type: Date },
+                location: { type: String, trim: true },
+                startDate: { type: String, trim: true },
+                endDate: { type: String, trim: true },
                 gpa: { type: String, trim: true },
+            },
+        ],
+        technicalSkills: [
+            {
+                category: { type: String, trim: true },
+                skills: { type: String, trim: true },
+            },
+        ],
+        internships: [
+            {
+                company: { type: String, trim: true },
+                role: { type: String, trim: true },
+                location: { type: String, trim: true },
+                startDate: { type: String, trim: true },
+                endDate: { type: String, trim: true },
+                link: { type: String, trim: true },
+                description: { type: String, trim: true },
+            },
+        ],
+        experience: [
+            {
+                company: { type: String, trim: true },
+                position: { type: String, trim: true },
+                location: { type: String, trim: true },
+                startDate: { type: String, trim: true },
+                endDate: { type: String, trim: true },
+                current: { type: Boolean, default: false },
+                description: { type: String, trim: true },
+            },
+        ],
+        projects: [
+            {
+                name: { type: String, trim: true },
+                link: { type: String, trim: true },
+                startDate: { type: String, trim: true },
+                endDate: { type: String, trim: true },
+                description: { type: String, trim: true },
             },
         ],
         skills: [
@@ -61,8 +90,20 @@ const resumeSchema = new mongoose.Schema(
             {
                 name: { type: String, trim: true },
                 issuer: { type: String, trim: true },
-                date: { type: Date },
+                date: { type: String, trim: true },
                 url: { type: String, trim: true },
+            },
+        ],
+        codingProfiles: [
+            {
+                platform: { type: String, trim: true },
+                stats: { type: String, trim: true },
+            },
+        ],
+        leadership: [
+            {
+                title: { type: String, trim: true },
+                description: { type: String, trim: true },
             },
         ],
         languages: [
@@ -100,3 +141,4 @@ resumeSchema.set('toJSON', {
 });
 
 module.exports = mongoose.model('Resume', resumeSchema);
+
