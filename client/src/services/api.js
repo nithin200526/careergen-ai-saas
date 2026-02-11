@@ -56,4 +56,7 @@ export const resumeAPI = {
 export const aiAPI = {
     generateSummary: (body) =>
         request('/ai/generate-summary', { method: 'POST', body: JSON.stringify(body) }),
+
+    analyzeResume: (body) =>
+        request('/ai/analyze', { method: 'POST', body: JSON.stringify(body) }),
 };

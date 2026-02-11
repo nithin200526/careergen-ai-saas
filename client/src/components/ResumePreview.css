@@ -1,0 +1,168 @@
+/* ===================================== */
+/* LaTeX-style ATS Resume Preview        */
+/* ===================================== */
+
+.resume-preview {
+    position: sticky;
+    top: 96px;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+}
+
+.resume-paper {
+    background: #ffffff;
+    color: #000000;
+    padding: 40px 44px;
+    border-radius: 4px;
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+    font-family: 'Times New Roman', 'CMU Serif', Georgia, serif;
+    font-size: 10.5pt;
+    line-height: 1.35;
+    min-height: 600px;
+    max-width: 100%;
+}
+
+/* Header */
+.rp-header {
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+.rp-name {
+    font-size: 20pt;
+    font-weight: 700;
+    color: #000;
+    margin: 0 0 4px 0;
+    letter-spacing: 0.02em;
+    font-family: 'Times New Roman', Georgia, serif;
+}
+
+.rp-contact {
+    font-size: 9pt;
+    color: #333;
+    line-height: 1.5;
+}
+
+.rp-separator {
+    color: #888;
+    margin: 0 1px;
+}
+
+.rp-link {
+    color: #1a0dab;
+    text-decoration: none;
+}
+
+/* Sections */
+.rp-section {
+    margin-bottom: 10px;
+}
+
+.rp-section-title {
+    font-size: 11pt;
+    font-weight: 700;
+    color: #000;
+    margin: 0;
+    padding: 0;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-family: 'Times New Roman', Georgia, serif;
+}
+
+.rp-divider {
+    border-top: 1.5px solid #000;
+    margin: 2px 0 6px 0;
+}
+
+/* Text */
+.rp-text {
+    margin: 0 0 4px 0;
+    font-size: 10pt;
+    color: #222;
+    text-align: justify;
+}
+
+.rp-bold {
+    font-weight: 700;
+}
+
+/* Entry (Experience / Education) */
+.rp-entry {
+    margin-bottom: 8px;
+}
+
+.rp-entry-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 10.5pt;
+}
+
+.rp-entry-sub {
+    font-size: 10pt;
+    color: #333;
+    font-style: italic;
+    margin-top: 1px;
+}
+
+.rp-date {
+    font-style: italic;
+    font-size: 10pt;
+    color: #444;
+    white-space: nowrap;
+}
+
+.rp-float-right {
+    float: right;
+}
+
+/* Bullets */
+.rp-bullets {
+    margin: 3px 0 0 0;
+    padding-left: 18px;
+    list-style-type: disc;
+}
+
+.rp-bullets li {
+    font-size: 10pt;
+    color: #222;
+    margin-bottom: 1px;
+    line-height: 1.4;
+}
+
+/* Inline entry (Certifications) */
+.rp-entry-inline {
+    font-size: 10pt;
+    margin-bottom: 2px;
+    display: flex;
+    justify-content: space-between;
+}
+
+/* Skills */
+.rp-skills {
+    font-size: 10pt;
+    color: #222;
+}
+
+/* Empty */
+.rp-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: #999;
+    font-style: italic;
+    font-size: 11pt;
+}
+
+/* Scrollbar for preview */
+.resume-preview::-webkit-scrollbar {
+    width: 4px;
+}
+
+.resume-preview::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.resume-preview::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+}

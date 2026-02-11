@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { resumeAPI, aiAPI } from '../services/api';
+import ResumePreview from '../components/ResumePreview';
 
 const emptyResume = {
     title: '',
@@ -16,6 +17,7 @@ const emptyResume = {
     experience: [],
     education: [],
     skills: [],
+    certifications: [],
 };
 
 export default function ResumeBuilder() {
@@ -30,6 +32,11 @@ export default function ResumeBuilder() {
     const [success, setSuccess] = useState('');
     const [aiLoading, setAiLoading] = useState(false);
     const [skillInput, setSkillInput] = useState('');
+
+    // ── JD Analysis state ──
+    const [jobDescription, setJobDescription] = useState('');
+    const [analysis, setAnalysis] = useState(null);
+    const [analyzing, setAnalyzing] = useState(false);
 
     useEffect(() => {
         if (isEditing) {
@@ -124,6 +131,33 @@ export default function ResumeBuilder() {
         }));
     };
 
+    // ── Certifications ──
+    const addCertification = () => {
+        setForm((prev) => ({
+            ...prev,
+            certifications: [
+                ...(prev.certifications || []),
+                { name: '', issuer: '', date: '' },
+            ],
+        }));
+    };
+
+    const updateCertification = (index, field, value) => {
+        setForm((prev) => ({
+            ...prev,
+            certifications: (prev.certifications || []).map((c, i) =>
+                i === index ? { ...c, [field]: value } : c
+            ),
+        }));
+    };
+
+    const removeCertification = (index) => {
+        setForm((prev) => ({
+            ...prev,
+            certifications: (prev.certifications || []).filter((_, i) => i !== index),
+        }));
+    };
+
     // ── AI Summary ──
     const generateSummary = async () => {
         setAiLoading(true);
@@ -145,11 +179,37 @@ export default function ResumeBuilder() {
         }
     };
 
+    // ── AI JD Analysis ──
+    const analyzeVsJD = async () => {
+        if (!jobDescription.trim()) {
+            setError('Please paste a job description first');
+            return;
+        }
+        setAnalyzing(true);
+        setError('');
+        setAnalysis(null);
+        try {
+            const res = await aiAPI.analyzeResume({
+                resume: form,
+                jobDescription,
+            });
+            setAnalysis(res.data.analysis);
+        } catch (err) {
+            setError(`Analysis Error: ${err.message}`);
+        } finally {
+            setAnalyzing(false);
+        }
+    };
+
     // ── Save ──
     const handleSave = async () => {
-        if (!form.title.trim()) {
-            setError('Resume title is required');
+        if (!form.personalInfo.fullName.trim()) {
+            setError('Full name is required');
             return;
+        }
+        if (!form.title.trim()) {
+            // Auto-set title from name if empty
+            form.title = `${form.personalInfo.fullName}'s Resume`;
         }
 
         setSaving(true);
@@ -178,16 +238,17 @@ export default function ResumeBuilder() {
 
     return (
         <div className="page fade-in">
-            <div className="container">
-                <div className="page-header">
-                    <h1>{isEditing ? 'Edit Resume' : 'Create New Resume'}</h1>
-                    <p>Fill in your details below. Use AI to generate your professional summary.</p>
-                </div>
+            <div className="builder-split">
+                {/* ── LEFT: Form ── */}
+                <div className="builder-form-side">
+                    <div className="page-header">
+                        <h1>{isEditing ? 'Edit Resume' : 'Create New Resume'}</h1>
+                        <p>Fill in your details. Only your <strong>name</strong> is required — everything else is optional.</p>
+                    </div>
 
-                {error && <div className="alert alert-error">⚠️ {error}</div>}
-                {success && <div className="alert alert-success">✅ {success}</div>}
+                    {error && <div className="alert alert-error">⚠️ {error}</div>}
+                    {success && <div className="alert alert-success">✅ {success}</div>}
 
-                <div className="builder-layout">
                     {/* Title */}
                     <div className="builder-section">
                         <h3><span className="section-icon">📋</span> Resume Title</h3>
@@ -195,7 +256,7 @@ export default function ResumeBuilder() {
                             <input
                                 type="text"
                                 className="form-input"
-                                placeholder="e.g. Software Engineer Resume"
+                                placeholder="e.g. Full Stack Developer Resume"
                                 value={form.title}
                                 onChange={(e) => updateField('title', e.target.value)}
                             />
@@ -207,14 +268,14 @@ export default function ResumeBuilder() {
                         <h3><span className="section-icon">👤</span> Personal Information</h3>
                         <div className="form-row">
                             <div className="form-group">
-                                <label>Full Name</label>
-                                <input type="text" className="form-input" placeholder="John Doe"
+                                <label>Full Name <span style={{ color: 'var(--accent-primary)' }}>*</span></label>
+                                <input type="text" className="form-input" placeholder="Your Name"
                                     value={form.personalInfo.fullName}
                                     onChange={(e) => updatePersonalInfo('fullName', e.target.value)} />
                             </div>
                             <div className="form-group">
                                 <label>Email</label>
-                                <input type="email" className="form-input" placeholder="john@example.com"
+                                <input type="email" className="form-input" placeholder="email@example.com"
                                     value={form.personalInfo.email}
                                     onChange={(e) => updatePersonalInfo('email', e.target.value)} />
                             </div>
@@ -228,7 +289,7 @@ export default function ResumeBuilder() {
                             </div>
                             <div className="form-group">
                                 <label>Location</label>
-                                <input type="text" className="form-input" placeholder="San Francisco, CA"
+                                <input type="text" className="form-input" placeholder="City, Country"
                                     value={form.personalInfo.location}
                                     onChange={(e) => updatePersonalInfo('location', e.target.value)} />
                             </div>
@@ -252,27 +313,12 @@ export default function ResumeBuilder() {
                     {/* AI Summary */}
                     <div className="builder-section ai-section">
                         <h3><span className="section-icon">🤖</span> Professional Summary</h3>
-                        <button
-                            className="ai-generate-btn"
-                            onClick={generateSummary}
-                            disabled={aiLoading}
-                        >
-                            {aiLoading ? (
-                                <>
-                                    <span className="spinner"></span> Generating with AI...
-                                </>
-                            ) : (
-                                <>✨ Generate with AI</>
-                            )}
+                        <button className="ai-generate-btn" onClick={generateSummary} disabled={aiLoading}>
+                            {aiLoading ? (<><span className="spinner"></span> Generating...</>) : (<>✨ Generate with AI</>)}
                         </button>
                         <div className="form-group">
-                            <textarea
-                                className="form-input"
-                                rows={5}
-                                placeholder="Your professional summary will appear here..."
-                                value={form.summary}
-                                onChange={(e) => updateField('summary', e.target.value)}
-                            />
+                            <textarea className="form-input" rows={4} placeholder="Your professional summary..."
+                                value={form.summary} onChange={(e) => updateField('summary', e.target.value)} />
                         </div>
                     </div>
 
@@ -310,8 +356,8 @@ export default function ResumeBuilder() {
                                     </div>
                                 </div>
                                 <div className="form-group">
-                                    <label>Description</label>
-                                    <textarea className="form-input" rows={3} placeholder="Key responsibilities..."
+                                    <label>Description <span style={{ color: 'var(--text-muted)', fontSize: '0.8em' }}>(one bullet per line)</span></label>
+                                    <textarea className="form-input" rows={3} placeholder="Key responsibilities and achievements..."
                                         value={exp.description} onChange={(e) => updateExperience(i, 'description', e.target.value)} />
                                 </div>
                             </div>
@@ -349,6 +395,20 @@ export default function ResumeBuilder() {
                                             value={edu.gpa} onChange={(e) => updateEducation(i, 'gpa', e.target.value)} />
                                     </div>
                                 </div>
+                                <div className="form-row">
+                                    <div className="form-group">
+                                        <label>Start Date</label>
+                                        <input type="date" className="form-input"
+                                            value={edu.startDate ? edu.startDate.split('T')[0] : ''}
+                                            onChange={(e) => updateEducation(i, 'startDate', e.target.value)} />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>End Date</label>
+                                        <input type="date" className="form-input"
+                                            value={edu.endDate ? edu.endDate.split('T')[0] : ''}
+                                            onChange={(e) => updateEducation(i, 'endDate', e.target.value)} />
+                                    </div>
+                                </div>
                             </div>
                         ))}
                         <button className="add-btn" onClick={addEducation}>+ Add Education</button>
@@ -366,27 +426,142 @@ export default function ResumeBuilder() {
                             ))}
                         </div>
                         <div className="skill-input-row">
-                            <input
-                                type="text"
-                                className="form-input"
-                                placeholder="Add a skill (e.g. React, Node.js)"
+                            <input type="text" className="form-input" placeholder="Add a skill (e.g. React)"
                                 value={skillInput}
                                 onChange={(e) => setSkillInput(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addSkill())}
-                            />
+                                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addSkill())} />
                             <button className="btn btn-secondary btn-sm" onClick={addSkill}>Add</button>
                         </div>
                     </div>
 
+                    {/* Certifications */}
+                    <div className="builder-section">
+                        <h3><span className="section-icon">🏆</span> Certifications</h3>
+                        {(form.certifications || []).map((cert, i) => (
+                            <div key={i} className="entry-card">
+                                <button className="remove-btn" onClick={() => removeCertification(i)}>✕</button>
+                                <div className="form-row">
+                                    <div className="form-group">
+                                        <label>Certification Name</label>
+                                        <input type="text" className="form-input" placeholder="AWS Solutions Architect"
+                                            value={cert.name} onChange={(e) => updateCertification(i, 'name', e.target.value)} />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Issuer</label>
+                                        <input type="text" className="form-input" placeholder="Amazon"
+                                            value={cert.issuer} onChange={(e) => updateCertification(i, 'issuer', e.target.value)} />
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                        <button className="add-btn" onClick={addCertification}>+ Add Certification</button>
+                    </div>
+
+                    {/* ── Job Description Analysis ── */}
+                    <div className="builder-section jd-section">
+                        <h3><span className="section-icon">🎯</span> Job Description Analysis</h3>
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: 12, fontSize: '0.9rem' }}>
+                            Paste a job description to see how well your resume matches and what's missing.
+                        </p>
+                        <div className="form-group">
+                            <textarea
+                                className="form-input"
+                                rows={6}
+                                placeholder="Paste the full job description here..."
+                                value={jobDescription}
+                                onChange={(e) => setJobDescription(e.target.value)}
+                            />
+                        </div>
+                        <button className="ai-generate-btn" onClick={analyzeVsJD} disabled={analyzing}>
+                            {analyzing ? (<><span className="spinner"></span> Analyzing...</>) : (<>🎯 Analyze Match</>)}
+                        </button>
+
+                        {/* Analysis Results */}
+                        {analysis && (
+                            <div className="analysis-results fade-in">
+                                {/* Match Score */}
+                                <div className="match-score-bar">
+                                    <div className="match-score-label">
+                                        <span>ATS Match Score</span>
+                                        <span className={`match-score-value ${analysis.matchScore >= 80 ? 'score-high' :
+                                                analysis.matchScore >= 50 ? 'score-mid' : 'score-low'
+                                            }`}>
+                                            {analysis.matchScore}%
+                                        </span>
+                                    </div>
+                                    <div className="match-bar-track">
+                                        <div
+                                            className={`match-bar-fill ${analysis.matchScore >= 80 ? 'bar-high' :
+                                                    analysis.matchScore >= 50 ? 'bar-mid' : 'bar-low'
+                                                }`}
+                                            style={{ width: `${analysis.matchScore}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+
+                                {/* Strengths */}
+                                {analysis.strengths?.length > 0 && (
+                                    <div className="analysis-block">
+                                        <h4>✅ Strengths</h4>
+                                        <ul>
+                                            {analysis.strengths.map((s, i) => <li key={i}>{s}</li>)}
+                                        </ul>
+                                    </div>
+                                )}
+
+                                {/* Missing Skills */}
+                                {analysis.missingSkills?.length > 0 && (
+                                    <div className="analysis-block missing">
+                                        <h4>⚠️ Missing Skills</h4>
+                                        <div className="missing-tags">
+                                            {analysis.missingSkills.map((s, i) => (
+                                                <span key={i} className="missing-tag">{s}</span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Missing Sections */}
+                                {analysis.missingSections?.length > 0 && (
+                                    <div className="analysis-block missing">
+                                        <h4>📝 Missing Sections</h4>
+                                        <div className="missing-tags">
+                                            {analysis.missingSections.map((s, i) => (
+                                                <span key={i} className="missing-tag section-tag">{s}</span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Suggestions */}
+                                {analysis.suggestions?.length > 0 && (
+                                    <div className="analysis-block">
+                                        <h4>💡 Suggestions</h4>
+                                        <ul>
+                                            {analysis.suggestions.map((s, i) => <li key={i}>{s}</li>)}
+                                        </ul>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
                     {/* Actions */}
                     <div className="builder-actions">
-                        <button className="btn btn-secondary" onClick={() => navigate('/dashboard')}>
-                            Cancel
-                        </button>
+                        <button className="btn btn-secondary" onClick={() => navigate('/dashboard')}>Cancel</button>
                         <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
                             {saving ? <span className="spinner"></span> : isEditing ? 'Update Resume' : 'Save Resume'}
                         </button>
                     </div>
+                </div>
+
+                {/* ── RIGHT: Live Preview ── */}
+                <div className="builder-preview-side">
+                    <div className="preview-header">
+                        <h3>📄 Live Preview</h3>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>ATS-friendly format</span>
+                    </div>
+                    <ResumePreview data={form} />
                 </div>
             </div>
         </div>

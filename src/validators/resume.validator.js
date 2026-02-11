@@ -14,8 +14,8 @@ const createResumeSchema = Joi.object({
         email: Joi.string().email().trim().allow(''),
         phone: Joi.string().trim().max(20).allow(''),
         location: Joi.string().trim().max(200).allow(''),
-        linkedin: Joi.string().uri().trim().allow(''),
-        portfolio: Joi.string().uri().trim().allow(''),
+        linkedin: Joi.alternatives().try(Joi.string().uri(), Joi.string().allow('')).optional(),
+        portfolio: Joi.alternatives().try(Joi.string().uri(), Joi.string().allow('')).optional(),
     }).optional(),
     summary: Joi.string().trim().max(2000).allow('').optional(),
     experience: Joi.array()
@@ -23,8 +23,8 @@ const createResumeSchema = Joi.object({
             Joi.object({
                 company: Joi.string().trim().max(200).allow(''),
                 position: Joi.string().trim().max(200).allow(''),
-                startDate: Joi.date().iso().allow(null),
-                endDate: Joi.date().iso().allow(null),
+                startDate: Joi.alternatives().try(Joi.date().iso(), Joi.string().allow('', null)).optional(),
+                endDate: Joi.alternatives().try(Joi.date().iso(), Joi.string().allow('', null)).optional(),
                 current: Joi.boolean().default(false),
                 description: Joi.string().trim().max(2000).allow(''),
             })
@@ -36,8 +36,8 @@ const createResumeSchema = Joi.object({
                 institution: Joi.string().trim().max(200).allow(''),
                 degree: Joi.string().trim().max(200).allow(''),
                 field: Joi.string().trim().max(200).allow(''),
-                startDate: Joi.date().iso().allow(null),
-                endDate: Joi.date().iso().allow(null),
+                startDate: Joi.alternatives().try(Joi.date().iso(), Joi.string().allow('', null)).optional(),
+                endDate: Joi.alternatives().try(Joi.date().iso(), Joi.string().allow('', null)).optional(),
                 gpa: Joi.string().trim().max(10).allow(''),
             })
         )
@@ -58,7 +58,7 @@ const createResumeSchema = Joi.object({
                 name: Joi.string().trim().max(200).allow(''),
                 issuer: Joi.string().trim().max(200).allow(''),
                 date: Joi.date().iso().allow(null),
-                url: Joi.string().uri().trim().allow(''),
+                url: Joi.alternatives().try(Joi.string().uri(), Joi.string().allow('')).optional(),
             })
         )
         .optional(),

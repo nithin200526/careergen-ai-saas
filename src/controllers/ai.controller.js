@@ -22,6 +22,26 @@ const generateSummary = asyncHandler(async (req, res) => {
     });
 });
 
+/**
+ * @desc    Analyze resume against a job description
+ * @route   POST /api/v1/ai/analyze
+ * @access  Private
+ */
+const analyzeResume = asyncHandler(async (req, res) => {
+    const { resume, jobDescription } = req.body;
+
+    const analysis = await aiService.analyzeResumeVsJD({
+        resume,
+        jobDescription,
+    });
+
+    res.status(200).json({
+        success: true,
+        data: { analysis },
+    });
+});
+
 module.exports = {
     generateSummary,
+    analyzeResume,
 };
