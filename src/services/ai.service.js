@@ -8,9 +8,8 @@ const ApiError = require('../utils/ApiError');
  */
 class AIService {
     constructor() {
-        this.apiKey = process.env.AI_API_KEY;
-        this.apiUrl = process.env.AI_API_URL || 'https://api.openai.com/v1/chat/completions';
-        this.model = process.env.AI_MODEL || 'gpt-3.5-turbo';
+        this.apiUrl = process.env.AI_API_URL || 'http://localhost:11434/v1/chat/completions';
+        this.model = process.env.AI_MODEL || 'llama3';
     }
 
     /**
@@ -19,9 +18,6 @@ class AIService {
      * @returns {String} generated summary
      */
     async generateSummary({ jobTitle, experience, skills, tone = 'professional' }) {
-        if (!this.apiKey) {
-            throw ApiError.internal('AI service is not configured. Set AI_API_KEY in environment.');
-        }
 
         const prompt = this._buildSummaryPrompt({ jobTitle, experience, skills, tone });
 
@@ -30,7 +26,6 @@ class AIService {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    Authorization: `Bearer ${this.apiKey}`,
                 },
                 body: JSON.stringify({
                     model: this.model,
